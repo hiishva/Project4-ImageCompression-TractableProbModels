@@ -18,7 +18,11 @@ import Util
 #             print('added to train data')
 #     return testDataset, trainDataset
 
-dataset=Util.load_dataset(os.getcwd() + '/dataset/baudio.ts.data')   
-clt=CLT_class.CLT()
-clt.learn(dataset)
-print(dataset[0])
+trainDataset=Util.load_dataset(os.getcwd() + '/dataset/baudio.ts.data')
+testDataset=Util.load_dataset(os.getcwd() + '/dataset/baudio.test.data')
+# clt=CLT_class.CLT()
+# clt.learn(trainDataset)
+# print(trainDataset[0])
+MT = MIXTURE_CLT.MIXTURE_CLT()
+MT.learn(trainDataset)
+# print(MT.computeLL(testDataset))
