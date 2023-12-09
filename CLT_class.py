@@ -137,9 +137,9 @@ class CLT:
         Tree = minimum_spanning_tree(csr_matrix(edgemat))
         self.topo_order, self.parents = depth_first_order(Tree, 0, directed=False)
         for i in range(r):
-            row = random.randrange(0, dataset.shape[0])
+            row = random.randrange(0, dataset.shape[1])
             col = random.randrange(0, dataset.shape[1])
-            
+
             edgemat[row][col] = 0
             edgemat[col][row] = 0
 

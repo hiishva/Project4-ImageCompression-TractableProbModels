@@ -92,7 +92,10 @@ class MIXTURE_CLT():
 if __name__ == '__main__':
     
     datasetsNames = ['accidents', 'baudio', 'bnetflix', 'jester', 'kdd', 'msnbc', 'nltcs', 'plants', 'pumsb_star', 'tretail'] #Filenames
-    k = [2, 5, 10, 20]
+    kVal = [2, 5, 10, 20]
+    for dsName in datasetsNames:
+        for k in kVals:
+            print
     for i,dsName in enumerate(datasetsNames):
         llVal =[] #Log Likelihood values
         for j in range(5):
