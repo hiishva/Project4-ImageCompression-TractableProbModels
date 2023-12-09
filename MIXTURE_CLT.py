@@ -1,16 +1,14 @@
-
 from __future__ import print_function
 import numpy as np
 import sys
+import os
 import time
 from Util import *
 from CLT_class import CLT
-from scipy.special import logsumexp
 
 class MIXTURE_CLT():
-    
     def __init__(self):
-        self.n_components = 2 # number of components
+        self.n_components = 0 # number of components
         self.mixture_probs = None # mixture probabilities
         self.clt_list =[]   # List of Tree Bayesian networks
         
@@ -20,44 +18,47 @@ class MIXTURE_CLT():
     '''
     def learn(self, dataset, n_components=2, max_iter=50, epsilon=1e-5):
         # For each component and each data point, we have a weight
-        weights=np.zeros((dataset.shape[0], dataset.shape[1], n_components))
-        OldLL = 0.0
+        weights=np.zeros((n_components, dataset.shape[0]))
+        self.n_components = n_components
         # Randomly initialize the chow-liu trees and the mixture probabilities
-        for i in range(n_components):
-            clt = CLT()
-            self.clt_list.append(clt)
-            weights[:, :, i] = np.random.rand(dataset.shape[0], dataset.shape[1])
-            print(weights.shape[0])
-            print(dataset.shape[0])
+        self.mixture_probs = np.random.random(n_components)
+        self.mixture_probs /= self.mixture_probs.sum()
+
+        #Init the Chow-liu trees
+        ChowProbs = np.zeros((n_components, dataset.shape[0]))
+        self.clt_list = [CLT() for i in range(n_components)]
+        for clt in self.clt_list:
+            clt.learn(dataset)
+        
+        # for i in range(n_components):
+        #     clt = CLT()
+        #     self.clt_list.append(clt)
+        #     weights[:, :, i] = np.random.rand(dataset.shape[0], dataset.shape[1])
+        #     print(weights.shape[0])
+        #     print(dataset.shape[0])
 
         for itr in range(max_iter):
-            #E-step: Complete the dataset to yield a weighted dataset
-            # We store the weights in an array weights[ncomponents,number of points]
-            #E-Step:
-            weights = self.EStep(dataset, weights)
+            for i in range(n_components):
+                
+                #E-step: Complete the dataset to yield a weighted dataset
+                # We store the weights in an array weights[ncomponents,number of points]
+                for j,sample in enumerate(dataset):
+                    ChowProbs[i][j] = self.clt_list[i].getProb(sample)
+
+                weights[i] = np.multiply(self.mixture_probs[i], ChowProbs[i]) / np.sum(np.multiply(self.mixture_probs[i], ChowProbs[i]))
 
             # M-step: Update the Chow-Liu Trees and the mixture probabilities
             #Your code for M-Step here
-            self.MStep(dataset,weights)
-
-            #Compute LL
-            NewLL = self.computeLL(dataset)
-
-            if itr > 0 and abs(NewLL - OldLL) < epsilon:
-                break
-            OldLL = NewLL
-    
-        
-    def EStep(self, dataset,weights):
-        for c in range(self.n_components):
-            computeCompLL = self.clt_list[c].computeLL(dataset)
-            weights[:, :, c] = np.exp(computeCompLL - logsumexp(computeCompLL))
-        return weights
-    
-    def MStep(self,dataset, weights):
-        self.mixture_probs = np.mean(weights,axis=1)
-        for c in range(self.n_components):
-            self.clt_list[c].update(dataset,weights[:,:,c])
+                self.clt_list[i].update(dataset,weights[i])
+            
+            #Compute the log-likelihood and check for convergence
+            if itr == 0:
+                curLL = self.computeLL(dataset) / dataset.shape[0] 
+            else:
+                newLL = self.computeLL(dataset) / dataset.shape[0] 
+                if abs(newLL - curLL) < epsilon: #checking for convergence
+                    return
+                curLL = newLL #set the current Log Likelihood
     '''
     Compute the log-likelihood score of the dataset
     '''
@@ -67,14 +68,12 @@ class MIXTURE_CLT():
         #   Hint:   Likelihood of a data point "x" is sum_{c} P(c) T(x|c)
         #           where P(c) is mixture_prob of cth component and T(x|c) is the probability w.r.t. chow-liu tree at c
         #           To compute T(x|c) you can use the function given in class CLT
-        for c in range(self.n_components):
-            compLL = self.clt_list[c].computeLL(dataset)
-            print(compLL)
-            ll += self.mixture_probs[c] * compLL
-            print(ll)
-        
-        return ll/dataset.shape[0]
-    
+        l = 0.0 #
+        for sample in range(dataset.shape[0]):
+            for i in range(self.n_components):
+                l += np.multiply(self.mixture_probs[i], self.clt_list[i].getProb(dataset[sample]))
+            ll += np.log(l)
+        return ll
 
     
 '''
@@ -90,9 +89,35 @@ class MIXTURE_CLT():
     To compute average log likelihood of a dataset w.r.t. the mixture, you can use
     mix_clt.computeLL(dataset)/dataset.shape[0]
 '''
-
+if __name__ == '__main__':
     
-    
+    datasetsNames = ['accidents', 'baudio', 'bnetflix', 'jester', 'kdd', 'msnbc', 'nltcs', 'plants', 'pumsb_star', 'tretail'] #Filenames
+    k = [2, 5, 10, 20]
+    for i,dsName in enumerate(datasetsNames):
+        llVal =[] #Log Likelihood values
+        for j in range(5):
+            trainDataset= Util.load_dataset(os.getcwd() + '/dataset/' + dsName + '.ts.data')
+            testDataset = Util.load_dataset(os.getcwd() + '/dataset/' + dsName + '.test.data')
+            print('Dataset {} has been loaded and beginning processing'.format(dsName))
+            
+
+            #Beginning Training on Mixture with CLTs
+            MT = MIXTURE_CLT()
+            MT.learn(trainDataset, n_components=k[i], max_iter=1, epsilon=1e-1)
+
+            #Beginning Testing on Test dataset
+            logLike = MT.computeLL(testDataset) / testDataset.shape[0]
+            llVal.append(logLike)
+        print('Average Log Likelihood: {}'.format(np.mean(llVal),'.4f'))
+        print('Standard Deviation of the Log Likelihood: {}'.format(np.std(llVal),'.4f'))
 
 
-    
+    # testDataset= Util.load_dataset(os.getcwd() + '/dataset/baudio.test.data')
+    # MT = MIXTURE_CLT()
+    # MT.learn(trainDataset, n_components=2,max_iter=1,epsilon=1e-1)
+
+    # ll = MT.computeLL(testDataset) / testDataset.shape[0]
+    # llVal.append(ll)
+    # print('{} dataset -- ll val: {}'.format(testDataset, llVal))
+
+

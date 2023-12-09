@@ -18,8 +18,8 @@ import Util
 #             print('added to train data')
 #     return testDataset, trainDataset
 
-trainDataset=Util.load_dataset(os.getcwd() + '/dataset/baudio.ts.data')
-testDataset=Util.load_dataset(os.getcwd() + '/dataset/baudio.test.data')
+trainDataset=Util.load_dataset(os.getcwd() + '/dataset/nltcs.ts.data')
+testDataset=Util.load_dataset(os.getcwd() + '/dataset/nltcs.test.data')
 # clt=CLT_class.CLT()
 # clt.learn(trainDataset)
 # print(trainDataset[0])

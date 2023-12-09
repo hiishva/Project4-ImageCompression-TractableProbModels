@@ -1,19 +1,15 @@
-
 """
 Define the Chow_liu Tree class
 """
-
-#
-
 from __future__ import print_function
 import numpy as np
-import Util 
+from Util import *
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.sparse.csgraph import depth_first_order
 import sys
 import time
-
+import random
 
 '''
 Class Chow-Liu Tree.
@@ -95,7 +91,6 @@ class CLT:
     '''
         Compute the Log-likelihood score of the dataset
     '''
-
     def computeLL(self,dataset):
         ll=0.0
         for i in range(dataset.shape[0]):
@@ -125,6 +120,28 @@ class CLT:
                 prob *= self.xyprob[x, y, assignx, assigny] / self.xprob[y, assigny]
         return prob
 
+    def rfUpdate(self,dataset, weights,r):
+        if not np.all(weights):
+            print('Error: Weight of an example in the dataset is zero')
+            sys.exit(-1)
+        if weights.shape[0]==dataset.shape[0]:
+            smooth = np.sum(weights)/ dataset.shape[0]
+            self.xycounts = Util.compute_weighted_xycounts(dataset, weights) + smooth
+            self.xcounts = Util.compute_weighted_xcounts(dataset, weights) + 2.0 *smooth
+        else:
+            print('Error: Each example must have a weight')
+            sys.exit(-1)
+        self.xyprob = Util.normalize2d(self.xycounts)
+        self.xprob = Util.normalize1d(self.xcounts)
+        edgemat = Util.compute_MI_prob(self.xycounts, self.xcounts) * (-1.0)
+        Tree = minimum_spanning_tree(csr_matrix(edgemat))
+        self.topo_order, self.parents = depth_first_order(Tree, 0, directed=False)
+        for i in range(r):
+            row = random.randrange(0, dataset.shape[0])
+            col = random.randrange(0, dataset.shape[1])
+            
+            edgemat[row][col] = 0
+            edgemat[col][row] = 0
 
 '''
     You can read the dataset using
