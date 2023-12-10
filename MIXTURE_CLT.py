@@ -92,27 +92,47 @@ class MIXTURE_CLT():
 if __name__ == '__main__':
     
     datasetsNames = ['accidents', 'baudio', 'bnetflix', 'jester', 'kdd', 'msnbc', 'nltcs', 'plants', 'pumsb_star', 'tretail'] #Filenames
-    kVal = [2, 5, 10, 20]
+    kVals = [2, 5, 10, 20]
+    maxItersVal = [50, 100, 250]
+    bestLL = 0
+    bestK = 2
     for dsName in datasetsNames:
         for k in kVals:
-            print
-    for i,dsName in enumerate(datasetsNames):
-        llVal =[] #Log Likelihood values
-        for j in range(5):
-            trainDataset= Util.load_dataset(os.getcwd() + '/dataset/' + dsName + '.ts.data')
-            testDataset = Util.load_dataset(os.getcwd() + '/dataset/' + dsName + '.test.data')
-            print('Dataset {} has been loaded and beginning processing'.format(dsName))
+            print('K value: {}'.format(k))
+            llVal =[]
+            for j in range(5):
+                trainDS = Util.load_dataset(os.getcwd() + '/dataset/' + dsName + '.ts.data')
+                validDS = Util.load_dataset(os.getcwd() + '/dataset/' + dsName + '.valid.data')
+                testDS = Util.load_dataset(os.getcwd() + '/dataset/' + dsName + '.test.data')
+                print('Dataset is processing: {}'.format(dsName))
+
+                MT = MIXTURE_CLT()
+                MT.learn(trainDS, n_components=k, max_iter=50, epsilon=1e-1)
+                ll = MT.computeLL(validDS) / validDS.shape[0]
+                llVal.append(ll)
+            avgLL = np.mean(llVal)
+            print('The average ll with k = {}  is: {}'.format(k,avgLL))
+                
+            if bestLL == 0:
+                bestK = k
+                bestLL = avgLL
             
+            if avgLL > bestLL:
+                bestK = k
+                bestLl = avgLL
+        
+        tstLL = []
+        for j in range(5):
+            MT.learn(trainDS,n_components=bestK, max_iter=1,epsilon=1e-1)
+            tstll = MT.computeLL(testDS)/testDS.shape[0]
+            tstLL.append(tstll)
+        
+        avgTst = np.mean(tstLL)
+        stdTst = np.std(tstLL)
+        print('The best hyperparameters for dataset {} is: k = {}'.format(dsName,bestK))
+        print('The average Log-likelihood: {}'.format(avgTst))
+        print('The standard deviation is: {}'.format(stdTst))
 
-            #Beginning Training on Mixture with CLTs
-            MT = MIXTURE_CLT()
-            MT.learn(trainDataset, n_components=k[i], max_iter=1, epsilon=1e-1)
-
-            #Beginning Testing on Test dataset
-            logLike = MT.computeLL(testDataset) / testDataset.shape[0]
-            llVal.append(logLike)
-        print('Average Log Likelihood: {}'.format(np.mean(llVal),'.4f'))
-        print('Standard Deviation of the Log Likelihood: {}'.format(np.std(llVal),'.4f'))
 
 
     # testDataset= Util.load_dataset(os.getcwd() + '/dataset/baudio.test.data')
